@@ -6,6 +6,8 @@ import json
 import tkinter as tk
 from tkinter import ttk
 import customtkinter as ctk
+from PIL import Image, ImageTk
+import io
 
 load_dotenv()
 
@@ -50,7 +52,14 @@ def get_songs_by_artist(token, artist_id):
     headers = get_auth_header(token)
     result = get(url, headers = headers)
     json_result = json.loads(result.content)["tracks"]
-    return json_result
+    tracks = []
+    for track in json_result:
+        track_info = {
+            "name": track["name"],
+            "image_url": track["album"]["images"][0]["url"]
+        }
+        tracks.append(track_info)
+    return tracks
 
 def search_artist():
     artist_name = search_entry.get()
@@ -62,8 +71,25 @@ def search_artist():
         song_listbox.delete(0,tk.END)
         for idx, song in enumerate(songs):
             song_listbox.insert(tk.END, f"{idx+1}. {song['name']}")
+            image_url = song["image_url"]
+            image = get_image_from_url(image_url)
+            if image:
+                song_images.append(image)
+                song_listbox.image_create(tk.END, image = image)
     else:
         artist_name_label.config(text = "No artist Found")
+                   
+def get_image_from_url(url, size = (50, 50)):
+    try:
+        response = get(url)
+        response.raise_for_status() 
+        image_data = response.content
+        image = Image.open(io.BytesIO(image_data))
+        image = image.resize(size)
+        return ImageTk.PhotoImage(image)    
+    except Exception as e:
+        print("Error loading image: ", e)
+        return None            
                      
 token = get_token()
 
@@ -84,6 +110,8 @@ artist_name_label.pack(pady=10)
 
 song_listbox = tk.Listbox(root, width=50)
 song_listbox.pack(pady=10)
+
+song_image = []
 
 root.mainloop()
     
